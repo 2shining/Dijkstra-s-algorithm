@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Algorithme de Dijkstra</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; }
+        .graph-container { position: relative; width: 500px; height: 400px; margin: auto; }
+        .node { position: absolute; width: 30px; height: 30px; background: yellow; border-radius: 50%; text-align: center; line-height: 30px; font-weight: bold; }
+        .input-weight { position: absolute; width: 30px; background: white; border: 1px solid black; text-align: center; font-size: 10px; }
+        svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; }
+        line { stroke: black; stroke-width: 2; }
+        table { border-collapse: collapse; margin: 20px auto; }
+        th, td { border: 1px solid black; padding: 8px; text-align: center; }
+        th { background-color: #f0f0f0; }
+        .processed-node { background-color: #fff3a3; }
+    </style>
+</head>
+<body>
+    <h2>Algorithme de Dijkstra</h2>
+    <div class="graph-container">
+        <svg>
+            <line x1="65" y1="165" x2="165" y2="65"/>
+            <line x1="65" y1="165" x2="250" y2="165"/>
+            <line x1="65" y1="165" x2="165" y2="265"/>
+            <line x1="165" y1="65" x2="250" y2="165"/>
+            <line x1="250" y1="165" x2="165" y2="265"/>
+            <line x1="165" y1="65" x2="315" y2="65"/>
+            <line x1="250" y1="165" x2="315" y2="65"/>
+            <line x1="250" y1="165" x2="315" y2="265"/>
+            <line x1="165" y1="265" x2="315" y2="265"/>
+            <line x1="315" y1="65" x2="415" y2="165"/>
+            <line x1="315" y1="265" x2="415" y2="165"/>
+            <line x1="315" y1="265" x2="315" y2="65"/>
+            <line x1="165" y1="65" x2="165" y2="265"/>
+            <line x1="250" y1="165" x2="315" y2="165"/>
+        </svg>
+
+        <div class="node" style="top: 150px; left: 50px;">A</div>
+        <div class="node" style="top: 50px; left: 150px;">B</div>
+        <div class="node" style="top: 150px; left: 235px;">C</div>
+        <div class="node" style="top: 250px; left: 150px;">D</div>
+        <div class="node" style="top: 50px; left: 300px;">E</div>
+        <div class="node" style="top: 250px; left: 300px;">F</div>
+        <div class="node" style="top: 150px; left: 400px;">G</div>
+
+        <input class="input-weight" id="AB" style="top:110px; left:90px;" type="number" value="1">
+        <input class="input-weight" id="AC" style="top:155px; left:110px;" type="number" value="1">
+        <input class="input-weight" id="AD" style="top:210px; left:90px;" type="number" value="1">
+        <input class="input-weight" id="BC" style="top:110px; left:195px;" type="number" value="1">
+        <input class="input-weight" id="CD" style="top:210px; left:195px;" type="number" value="1">
+        <input class="input-weight" id="BE" style="top:55px; left:228px;" type="number" value="1">
+        <input class="input-weight" id="CE" style="top:110px; left:265px;" type="number" value="1">
+        <input class="input-weight" id="CF" style="top:210px; left:265px;" type="number" value="1">
+        <input class="input-weight" id="DF" style="top:258px; left:225px;" type="number" value="1">
+        <input class="input-weight" id="EG" style="top:110px; left:350px;" type="number" value="1">
+        <input class="input-weight" id="FG" style="top:210px; left:350px;" type="number" value="1">
+        <input class="input-weight" id="BD" style="top:185px; left:145px;" type="number" value="1">
+        <input class="input-weight" id="DE" style="top:165px; left:280px;" type="number" value="1">
+        <input class="input-weight" id="EF" style="top:140px; left:298px;" type="number" value="1">
+    </div>
+
+    <button onclick="calculateShortestPath()">Calculer le chemin le plus court</button>
+    <p id="result"></p>
+    <div id="steps-table"></div>
+
+    <script>
+        const edges = ["AB","AC","AD","BC","CD","BE","CE","CF","DF","EG","FG","BD","DE","EF"];
+
+        function dijkstra(start, end) {
+            let graph = {};
+            let weightsList = [];
+            let steps = [];
+
+            edges.forEach(edge => {
+                let weight = parseInt(document.getElementById(edge).value) || 1;
+                let [a, b] = edge.split("");
+                if (!graph[a]) graph[a] = {};
+                if (!graph[b]) graph[b] = {};
+                graph[a][b] = weight;
+                graph[b][a] = weight;
+                weightsList.push(`${edge} = ${weight}`);
+            });
+
+            let distances = {};
+            let predecessors = {};
+            let visited = new Set();
+            const nodes = Object.keys(graph).sort();
+
+            nodes.forEach(node => {
+                distances[node] = Infinity;
+                predecessors[node] = null;
+            });
+            distances[start] = 0;
+
+            steps.push({ processedNode: null, distances: {...distances} });
+
+            while (visited.size < nodes.length) {
+                let closestNode = null;
+                for (let node of nodes) {
+                    if (!visited.has(node) && (closestNode === null || distances[node] < distances[closestNode])) {
+                        closestNode = node;
+                    }
+                }
+
+                if (!closestNode || distances[closestNode] === Infinity) break;
+                visited.add(closestNode);
+
+                for (let neighbor in graph[closestNode]) {
+                    const newDist = distances[closestNode] + graph[closestNode][neighbor];
+                    if (newDist < distances[neighbor]) {
+                        distances[neighbor] = newDist;
+                        predecessors[neighbor] = closestNode;
+                    }
+                }
+
+                steps.push({ processedNode: closestNode, distances: {...distances} });
+            }
+
+            // Construction du chemin unique
+            let path = [];
+            let current = end;
+            while (current !== null) {
+                path.unshift(current);
+                current = predecessors[current];
+            }
+
+            // Affichage des résultats
+            let resultHtml = `<strong>Valeurs saisies :</strong> ${weightsList.join(", ")}<br>`;
+            if (path.length > 1) {
+                resultHtml += `<strong>Chemin le plus court (${distances[end]} unités) :</strong><br>${path.join(" → ")}`;
+            } else {
+                resultHtml += "<strong>Aucun chemin trouvé</strong>";
+            }
+            document.getElementById("result").innerHTML = resultHtml;
+
+            // Génération du tableau
+            let tableHtml = `<h3>Tableau des étapes</h3><table><tr><th>Étape</th>`;
+            nodes.forEach(node => tableHtml += `<th>${node}</th>`);
+            tableHtml += "</tr>";
+
+            steps.forEach((step, index) => {
+                tableHtml += "<tr>";
+                tableHtml += `<td>${index === 0 ? "Initialisation" : step.processedNode}</td>`;
+                
+                nodes.forEach(node => {
+                    let dist = step.distances[node];
+                    let display = dist === Infinity ? "∞" : dist.toString();
+                    let isProcessed = step.processedNode === node;
+                    
+                    tableHtml += `<td${isProcessed ? ' class="processed-node"' : ''}>${display}</td>`;
+                });
+                
+                tableHtml += "</tr>";
+            });
+            
+            tableHtml += "</table>";
+            document.getElementById("steps-table").innerHTML = tableHtml;
+        }
+
+        function calculateShortestPath() {
+            let start = prompt("Entrer le nœud de départ :").toUpperCase();
+            let end = prompt("Entrer le nœud d'arrivée :").toUpperCase();
+            dijkstra(start, end);
+        }
+    </script>
+</body>
+</html>
