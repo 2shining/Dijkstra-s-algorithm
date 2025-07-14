@@ -56,7 +56,7 @@
             height: 100%; 
             z-index: 0; 
         }
-        line { 
+        line, path { 
             stroke: #7f8c8d; 
             stroke-width: 2; 
         }
@@ -80,9 +80,9 @@
         .processed-node { 
             background-color: #ffffff; 
         }
-        .updated-value {
-            background-color: #d5f5e3;
-        }
+        /*.updated-value {
+            background-color: #d5f5e3;  pour le moment 
+        }*/
         .start-node {
             background-color: #a6d4ff;
         }
@@ -109,6 +109,7 @@
             margin: 20px auto;
             text-align: center;
         }
+        
         .path-list {
             margin-top: 10px;
             padding: 10px;
@@ -118,31 +119,50 @@
         .controls {
             margin: 20px;
         }
+        .highlighted-edge {
+            stroke: red !important;
+            stroke-width: 3 !important;
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0% { stroke-width: 3; }
+            50% { stroke-width: 4; }
+            100% { stroke-width: 3; }
+        }
+        
     </style>
 </head>
 <body>
-    <h2>Algorithme de Dijkstra</h2>
+    <div style="position: absolute; top: 20px; right: 20px;">
+        <button style="background-color: #08af08; color: #fff; border: none; padding: 10px 20px; font-size: 16px; border-radius: 4px; cursor: pointer;" onclick="window.location.href='indexMax.html'">
+            Chemin Max
+        </button>
+    </div>
+    <h2>Algorithme de Dijkstra (Min)</h2>
     
     <div class="controls">
         <button onclick="calculateShortestPath()">Calculer le chemin le plus court</button>
+        <button class="reset-btn" onclick="resetAll()">⟳</button>
+
     </div>
+
     
     <div class="graph-container">
         <svg>
-            <line x1="65" y1="165" x2="165" y2="65"/>
-            <line x1="65" y1="165" x2="250" y2="165"/>
-            <line x1="65" y1="165" x2="165" y2="265"/>
-            <line x1="165" y1="65" x2="250" y2="165"/>
-            <line x1="250" y1="165" x2="165" y2="265"/>
-            <line x1="165" y1="65" x2="315" y2="65"/>
-            <line x1="250" y1="165" x2="315" y2="65"/>
-            <line x1="250" y1="165" x2="315" y2="265"/>
-            <line x1="165" y1="265" x2="315" y2="265"/>
-            <line x1="315" y1="65" x2="415" y2="165"/>
-            <line x1="315" y1="265" x2="415" y2="165"/>
-            <line x1="315" y1="265" x2="315" y2="65"/>
-            <line x1="165" y1="65" x2="165" y2="265"/>
-            <line x1="250" y1="165" x2="315" y2="165"/>
+            <line id="edge-AB" x1="65" y1="165" x2="165" y2="65"/>
+            <line id="edge-AC" x1="65" y1="165" x2="250" y2="165"/>
+            <line id="edge-AD" x1="65" y1="165" x2="165" y2="265"/>
+            <line id="edge-BC" x1="165" y1="65" x2="250" y2="165"/>
+            <line id="edge-CD" x1="250" y1="165" x2="165" y2="265"/>
+            <line id="edge-BE" x1="165" y1="65" x2="315" y2="65"/>
+            <line id="edge-CE" x1="250" y1="165" x2="315" y2="65"/>
+            <line id="edge-CF" x1="250" y1="165" x2="315" y2="265"/>
+            <line id="edge-DF" x1="165" y1="265" x2="315" y2="265"/>
+            <line id="edge-EG" x1="315" y1="65" x2="415" y2="165"/>
+            <line id="edge-FG" x1="315" y1="265" x2="415" y2="165"/>
+            <line id="edge-EF" x1="315" y1="265" x2="315" y2="65"/>
+            <line id="edge-BD" x1="165" y1="65" x2="165" y2="265"/>
+            <path id="edge-DE" d="M180,260 Q300,180 313,78" stroke="black" fill="none" stroke-width="2" />
         </svg>
 
         <div class="node" style="top: 150px; left: 50px;">A</div>
@@ -159,13 +179,13 @@
         <input class="input-weight" id="BC" style="top:110px; left:195px;" type="number" value="1">
         <input class="input-weight" id="CD" style="top:210px; left:195px;" type="number" value="1">
         <input class="input-weight" id="BE" style="top:55px; left:228px;" type="number" value="1">
-        <input class="input-weight" id="CE" style="top:110px; left:265px;" type="number" value="1">
+        <input class="input-weight" id="CE" style="top:110px; left:260px;" type="number" value="1">
         <input class="input-weight" id="CF" style="top:210px; left:265px;" type="number" value="1">
         <input class="input-weight" id="DF" style="top:258px; left:225px;" type="number" value="1">
         <input class="input-weight" id="EG" style="top:110px; left:350px;" type="number" value="1">
         <input class="input-weight" id="FG" style="top:210px; left:350px;" type="number" value="1">
         <input class="input-weight" id="BD" style="top:185px; left:145px;" type="number" value="1">
-        <input class="input-weight" id="DE" style="top:165px; left:280px;" type="number" value="1">
+        <input class="input-weight" id="DE" style="top:166px; left:272px;" type="number" value="1">
         <input class="input-weight" id="EF" style="top:140px; left:298px;" type="number" value="1">
     </div>
 
@@ -175,158 +195,193 @@
     <script>
         const edges = ["AB","AC","AD","BC","CD","BE","CE","CF","DF","EG","FG","BD","DE","EF"];
 
+        // Fonction pour réinitialiser la mise en évidence des arêtes
+        function resetEdgeHighlight() {
+            edges.forEach(edge => {
+                const elem = document.getElementById(`edge-${edge}`);
+                if (elem) {
+                    elem.classList.remove('highlighted-edge');
+                }
+            });
+        }
+
+        // Fonction pour mettre en évidence un chemin
+        function highlightPath(path) {
+            resetEdgeHighlight();
+            
+            for (let i = 0; i < path.length - 1; i++) {
+                const from = path[i];
+                const to = path[i+1];
+                
+                // Trouver l'arête correspondante (dans un sens ou dans l'autre)
+                const edgeId1 = `edge-${from}${to}`;
+                const edgeId2 = `edge-${to}${from}`;
+                
+                let edgeElem = document.getElementById(edgeId1);
+                if (!edgeElem) {
+                    edgeElem = document.getElementById(edgeId2);
+                }
+                
+                if (edgeElem) {
+                    edgeElem.classList.add('highlighted-edge');
+                }
+            }
+        }
+
         function dijkstra(start, end) {
-    document.getElementById("steps-table").innerHTML = "";
+            document.getElementById("steps-table").innerHTML = "";
+            resetEdgeHighlight();
 
-    const graph = {};
-    const weightsList = [];
-    const nodes = ["A", "B", "C", "D", "E", "F", "G"];
-    const steps = [];
+            const graph = {};
+            const weightsList = [];
+            const nodes = ["A", "B", "C", "D", "E", "F", "G"];
+            const steps = [];
 
-    edges.forEach(edge => {
-        const weight = parseInt(document.getElementById(edge).value) || 1;
-        const [a, b] = edge.split("");
-        if (!graph[a]) graph[a] = {};
-        if (!graph[b]) graph[b] = {};
-        graph[a][b] = weight;
-        graph[b][a] = weight;
-        weightsList.push(`${edge} = ${weight}`);
-    });
+            edges.forEach(edge => {
+                const weight = parseInt(document.getElementById(edge).value) || 1;
+                const [a, b] = edge.split("");
+                if (!graph[a]) graph[a] = {};
+                if (!graph[b]) graph[b] = {};
+                graph[a][b] = weight;
+                graph[b][a] = weight;
+                weightsList.push(`${edge} = ${weight}`);
+            });
 
-    const distances = {};
-    const predecessors = {};
-    const visited = new Set();
-    const allPredecessors = {};
+            const distances = {};
+            const predecessors = {};
+            const visited = new Set();
+            const allPredecessors = {};
 
-    nodes.forEach(node => {
-        distances[node] = Infinity;
-        predecessors[node] = null;
-        allPredecessors[node] = [];
-    });
-    distances[start] = 0;
+            nodes.forEach(node => {
+                distances[node] = Infinity;
+                predecessors[node] = null;
+                allPredecessors[node] = [];
+            });
+            distances[start] = 0;
 
-    steps.push({
-        processedNode: null,
-        distances: { ...distances },
-        predecessors: { ...predecessors }
-    });
+            steps.push({
+                processedNode: null,
+                distances: { ...distances },
+                predecessors: { ...predecessors }
+            });
 
-    while (visited.size < nodes.length) {
-        let closestNode = null;
-        for (let node of nodes) {
-            if (!visited.has(node) && (closestNode === null || distances[node] < distances[closestNode])) {
-                closestNode = node;
-            }
-        }
+            while (visited.size < nodes.length) {
+                let closestNode = null;
+                for (let node of nodes) {
+                    if (!visited.has(node) && (closestNode === null || distances[node] < distances[closestNode])) {
+                        closestNode = node;
+                    }
+                }
 
-        if (!closestNode || distances[closestNode] === Infinity) break;
-        visited.add(closestNode);
+                if (!closestNode || distances[closestNode] === Infinity) break;
+                visited.add(closestNode);
 
-        for (let neighbor in graph[closestNode]) {
-            if (visited.has(neighbor)) continue;
+                for (let neighbor in graph[closestNode]) {
+                    if (visited.has(neighbor)) continue;
 
-            const newDist = distances[closestNode] + graph[closestNode][neighbor];
-            if (newDist < distances[neighbor]) {
-                distances[neighbor] = newDist;
-                predecessors[neighbor] = closestNode;
-                allPredecessors[neighbor] = [closestNode];
-            } else if (newDist === distances[neighbor]) {
-                allPredecessors[neighbor].push(closestNode);
-            }
-        }
+                    const newDist = distances[closestNode] + graph[closestNode][neighbor];
+                    if (newDist < distances[neighbor]) {
+                        distances[neighbor] = newDist;
+                        predecessors[neighbor] = closestNode;
+                        allPredecessors[neighbor] = [closestNode];
+                    } else if (newDist === distances[neighbor]) {
+                        allPredecessors[neighbor].push(closestNode);
+                    }
+                }
 
-        steps.push({
-            processedNode: closestNode,
-            distances: { ...distances },
-            predecessors: { ...predecessors }
-        });
-    }
-
-    // ▶ Reconstruire tous les chemins les plus courts
-    function getAllPaths(to, path = []) {
-        if (to === start) return [[start, ...path]];
-        const paths = [];
-        for (const prev of allPredecessors[to]) {
-            paths.push(...getAllPaths(prev, [to, ...path]));
-        }
-        return paths;
-    }
-
-    const allPaths = (distances[end] < Infinity && allPredecessors[end].length > 0)
-        ? getAllPaths(end)
-        : [];
-
-    const displayedPath = [];
-    let current = end;
-    while (current !== null) {
-        displayedPath.unshift(current);
-        current = predecessors[current];
-    }
-
-    let resultHtml = `<strong>Valeurs saisies :</strong> ${weightsList.join(", ")}<br>`;
-    if (allPaths.length > 0) {
-        resultHtml += `<strong>Chemins les plus courts (${distances[end]} unités) :</strong><br>`;
-        allPaths.forEach(path => {
-            resultHtml += `${path.join(" → ")}<br>`;
-        });
-    } else {
-        resultHtml += "<strong>Aucun chemin trouvé</strong>";
-    }
-    document.getElementById("result").innerHTML = resultHtml;
-
-    // ▶ Génération du tableau
-let finalized = new Set();
-let finalizedStep = {};  // pour savoir quand chaque nœud est traité
-
-steps.forEach((step, index) => {
-    if (index > 0 && step.processedNode) {
-        finalized.add(step.processedNode);
-        finalizedStep[step.processedNode] = index;
-    }
-});
-
-let tableHtml = `<h3>Tableau des étapes</h3><table><tr><th>Étape</th>`;
-nodes.forEach(node => tableHtml += `<th>${node}</th>`);
-tableHtml += "</tr>";
-
-steps.forEach((step, index) => {
-    tableHtml += "<tr>";
-    tableHtml += `<td>${index === 0 ? "Initialisation" : step.processedNode}</td>`;
-
-    nodes.forEach(node => {
-        const dist = step.distances[node];
-        const pred = step.predecessors[node];
-        const isFinalized = finalized.has(node) && finalizedStep[node] < index;
-
-        if (isFinalized) {
-            tableHtml += `<td></td>`; // cellule vide pour les nœuds déjà finalisés
-        } else {
-            let display = dist === Infinity ? "∞" : dist.toString();
-            if (dist !== Infinity && pred !== null) display += pred;
-
-            const cellClasses = [];
-            if (index === 0 && node === start) cellClasses.push("start-node");
-            if (step.processedNode === node) cellClasses.push("processed-node");
-            if (
-                index > 0 &&
-                (step.distances[node] !== steps[index - 1].distances[node] ||
-                 step.predecessors[node] !== steps[index - 1].predecessors[node])
-            ) {
-                cellClasses.push("updated-value");
+                steps.push({
+                    processedNode: closestNode,
+                    distances: { ...distances },
+                    predecessors: { ...predecessors }
+                });
             }
 
-            tableHtml += `<td class="${cellClasses.join(" ")}">${display}</td>`;
+            // ▶ Reconstruire tous les chemins les plus courts
+            function getAllPaths(to, path = []) {
+                if (to === start) return [[start, ...path]];
+                const paths = [];
+                for (const prev of allPredecessors[to]) {
+                    paths.push(...getAllPaths(prev, [to, ...path]));
+                }
+                return paths;
+            }
+
+            const allPaths = (distances[end] < Infinity && allPredecessors[end].length > 0)
+                ? getAllPaths(end)
+                : [];
+
+            const displayedPath = [];
+            let current = end;
+            while (current !== null) {
+                displayedPath.unshift(current);
+                current = predecessors[current];
+            }
+
+            let resultHtml = `<strong>Valeurs saisies :</strong> ${weightsList.join(", ")}<br>`;
+            if (allPaths.length > 0) {
+                resultHtml += `<strong>Chemins les plus courts (${distances[end]} unités) :</strong><br>`;
+                allPaths.forEach(path => {
+                    resultHtml += `${path.join(" → ")}<br>`;
+                });
+                
+                // Mettre en évidence le premier chemin trouvé
+                highlightPath(allPaths[0]);
+            } else {
+                resultHtml += "<strong>Aucun chemin trouvé</strong>";
+            }
+            document.getElementById("result").innerHTML = resultHtml;
+
+            // ▶ Génération du tableau
+            let finalized = new Set();
+            let finalizedStep = {};  // pour savoir quand chaque nœud est traité
+
+            steps.forEach((step, index) => {
+                if (index > 0 && step.processedNode) {
+                    finalized.add(step.processedNode);
+                    finalizedStep[step.processedNode] = index;
+                }
+            });
+
+            let tableHtml = `<h3>Tableau des étapes</h3><table><tr><th>Étape</th>`;
+            nodes.forEach(node => tableHtml += `<th>${node}</th>`);
+            tableHtml += "</tr>";
+
+            steps.forEach((step, index) => {
+                tableHtml += "<tr>";
+                tableHtml += `<td>${index === 0 ? "Initialisation" : step.processedNode}</td>`;
+
+                nodes.forEach(node => {
+                    const dist = step.distances[node];
+                    const pred = step.predecessors[node];
+                    const isFinalized = finalized.has(node) && finalizedStep[node] < index;
+
+                    if (isFinalized) {
+                        tableHtml += `<td></td>`; // cellule vide pour les nœuds déjà finalisés
+                    } else {
+                        let display = dist === Infinity ? "∞" : dist.toString();
+                        if (dist !== Infinity && pred !== null) display += pred;
+
+                        const cellClasses = [];
+                        if (index === 0 && node === start) cellClasses.push("start-node");
+                        if (step.processedNode === node) cellClasses.push("processed-node");
+                        if (
+                            index > 0 &&
+                            (step.distances[node] !== steps[index - 1].distances[node] ||
+                             step.predecessors[node] !== steps[index - 1].predecessors[node])
+                        ) {
+                            cellClasses.push("updated-value");
+                        }
+
+                        tableHtml += `<td class="${cellClasses.join(" ")}">${display}</td>`;
+                    }
+                });
+
+                tableHtml += "</tr>";
+            });
+
+            tableHtml += "</table>";
+            document.getElementById("steps-table").innerHTML = tableHtml;
         }
-    });
-
-    tableHtml += "</tr>";
-});
-
-tableHtml += "</table>";
-document.getElementById("steps-table").innerHTML = tableHtml;
-
-}
-
 
         function calculateShortestPath() {
             let start = prompt("Entrer le nœud de départ (ex: A):").toUpperCase();
@@ -338,6 +393,22 @@ document.getElementById("steps-table").innerHTML = tableHtml;
                 alert("Veuillez entrer des nœuds valides (A à G)");
             }
         }
+
+        function resetAll() {
+        // Réinitialise tous les poids à 1
+        edges.forEach(edge => {
+            const input = document.getElementById(edge);
+            if (input) input.value = 1;
+        });
+
+        // Réinitialise les résultats
+        document.getElementById("result").innerHTML = "";
+        document.getElementById("steps-table").innerHTML = "";
+
+        // Réinitialise la couleur des arêtes
+        resetEdgeHighlight();
+        }
+
     </script>
 </body>
 </html>
